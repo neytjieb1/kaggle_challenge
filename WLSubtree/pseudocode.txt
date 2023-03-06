@@ -1,0 +1,31 @@
+send *copy* of graphs #so that can adjust labels
+
+for each step h:
+    for each graph in G:
+        for each v in nodes:
+            set = get labels of neighbours
+            sort(set) #sort neighbour labels (radix)
+            glue(set) #concatenate labels of neighbours
+            set = label(v) + glued set
+        #hash
+        sort all the new node labels #radix sort for fast
+        hash the node labels  #use a dictionary and change alphabet as you go
+        #relabel
+        for each v in nodes:
+            assign new hashed label
+        #feature vector
+        count the number of occurrences of each label#can I just append new node labels to past and then do valuecounts at the end if my alphabets are always disjoint?
+        hstack with the previous number of occur
+    
+    note down the biggest current alphabet letter
+    resort all feature vectors
+
+
+
+for each graph in G:
+    compute the feature vector from the hstack by adding in 0's where necessary
+    
+compute the kernel matrix
+
+        
+            
