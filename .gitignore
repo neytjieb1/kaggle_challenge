@@ -2,6 +2,7 @@
 *.pkl
 *.npz
 *.txt
-lib.py
+cyclicpattern.ipynb
 __pycache__/
 Data/
+*amanda*
