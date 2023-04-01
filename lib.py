@@ -114,7 +114,7 @@ def count(arr):
         if ind == 0:
             count += 1
             vis.append(arr[i])
-    return vis,count
+    return np.sort(vis),count
 
 
 #Hadamard Code Label
@@ -137,7 +137,15 @@ def hadamard_label(G,h):
     return(l)
 
 
-def hadamard_kernel(G1,G2,hmax):
+def hadamard_kernel(G1,G2,hmax,count=count):
+    
+    node_labelsG1 = nx.get_node_attributes(G1, "labels")
+    E1,epsilon1 = count(node_labelsG1)
+    node_labelsG2 = nx.get_node_attributes(G2, "labels")
+    E2,epsilon2 = count(node_labelsG2)
+    if E1.all() != E2.all():
+        raise ValueError("The two graphs must have the same alphabet of node labels")
+    
     dist = []
     for h in range(hmax):
         count = 0
@@ -145,6 +153,7 @@ def hadamard_kernel(G1,G2,hmax):
         h2 = hadamard_label(G2,h)
         n = np.shape(h1)[0]
         m = np.shape(h2)[0]
+
         for i in range(n):
             for j in range(m):
                 count += np.linalg.norm(h1[i,:]-h2[j,:],ord=1) 
