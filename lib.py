@@ -103,33 +103,32 @@ def hadamard(n, dtype=int):
 
 
 #count the number of distinct labels in a graph
-def count(arr):
-    vis = []
-    count = 0
-    for i in range(len(arr)):
-        ind = 0
-        for j in range(len(vis)):
-            if arr[i] == vis[j]:
-                ind += 1
-        if ind == 0:
-            count += 1
-            vis.append(arr[i])
-    return np.sort(vis),count
+#def count(arr):
+#    vis = []
+#    count = 0
+#    for i in range(len(arr)):
+#        ind = 0
+#        for j in range(len(vis)):
+#            if arr[i] == vis[j]:
+#                ind += 1
+#        if ind == 0:
+#            count += 1
+#            vis.append(arr[i])
+#    return np.sort(vis),count
 
 
 #Hadamard Code Label
 def hadamard_label(G,h):
     node_labels = nx.get_node_attributes(G, "labels")
     n = len(node_labels)
-    
-    E,epsilon = count(node_labels)
-    H = hadamard(2**math.ceil(math.log(epsilon,2)))
-    
+    E = range(0,49)
+    H = hadamard(2**math.ceil(math.log(50,2)))
     l = np.zeros((n,np.shape(H)[1]))
     
     for i in range(n):
-        for j in range(epsilon):
-            if node_labels[i] == E[j]:
+        for j in range(49):
+
+            if node_labels[i][0] == E[j]:
                 l[i,:] = H[j,:]
     for _ in range(h):
         for i in range(n):
@@ -137,18 +136,11 @@ def hadamard_label(G,h):
     return(l)
 
 
-def hadamard_kernel(G1,G2,hmax,count=count):
-    
-    node_labelsG1 = nx.get_node_attributes(G1, "labels")
-    E1,epsilon1 = count(node_labelsG1)
-    node_labelsG2 = nx.get_node_attributes(G2, "labels")
-    E2,epsilon2 = count(node_labelsG2)
-    if E1.all() != E2.all():
-        raise ValueError("The two graphs must have the same alphabet of node labels")
-    
+def hadamard_kernel(G1,G2,hmax):
     dist = []
+    
     for h in range(hmax):
-        count = 0
+        counter = 0
         h1 = hadamard_label(G1,h)
         h2 = hadamard_label(G2,h)
         n = np.shape(h1)[0]
@@ -156,20 +148,21 @@ def hadamard_kernel(G1,G2,hmax,count=count):
 
         for i in range(n):
             for j in range(m):
-                count += np.linalg.norm(h1[i,:]-h2[j,:],ord=1) 
-        dist.append(count)
+                counter += np.linalg.norm(h1[i,:]-h2[j,:],ord=1) 
+        dist.append(counter)
     return np.sum(dist)
 
 
-def adjacency_matrix(G):
+def weight_matrix(G,edge):
     nodes = sorted(G.nodes())
     size = len(nodes)
+    edge_labels = nx.get_edge_attributes(G, "labels")
     adj_mat = np.zeros((size,size))
-    for v in G.edges():
-        if v[0]==v[1]:
-            adj_mat[v[0],v[1]] = 2
+    for v  in G.edges():
+        if edge=='True':
+            adj_mat[v[0],v[1]] = edge_labels[(v[0],v[1])][0]
         else:
-            adj_mat[v[0],v[1]] = 1   
+            adj_mat[v[0],v[1]] = 1
     return adj_mat
 
 
@@ -184,7 +177,7 @@ def random_walk1(G, u, k):
     return walk
 
 
-def kernel_randomwalk(G1,G2,prob1,prob2,c):
+def kernel_randomwalk(G1,G2,edge,prob1=np.repeat(.5,2),prob2=np.repeat(.5,2),c=0.1):
 
     node_labels1 = nx.get_node_attributes(G1, "labels")
     node_labels2 = nx.get_node_attributes(G2, "labels")
@@ -199,39 +192,41 @@ def kernel_randomwalk(G1,G2,prob1,prob2,c):
     p = np.kron(p1,p2)
     q = np.kron(q1,q2)
     
-    #weight matrix for nodes labeled graphs
-    A1 = adjacency_matrix(G1)
-    A2 = adjacency_matrix(G2)
+    A1 = weight_matrix(G1,edge)
+    A2 = weight_matrix(G2,edge)
     
     W = np.kron(A1.T,A2.T)
 
-    n,d = np.shape(W)
-
-    for i in range(n1):
-        for j in range(n2):
-            if node_labels1[i] != node_labels2[j]:
-                W[i*n2+j,0:n] = np.zeros(d).reshape(1,-1)
+    n = np.shape(W)[0]
     
     V = np.linalg.inv(np.eye(n) - c*W)
     
     return q.T.dot(V).dot(p)
 
 from itertools import product
-def direct_product(G1, G2):
-    GP = nx.Graph()
-    # add nodes
-    for u, v in product(G1, G2):
-        if G1.nodes[u]["labels"] == G2.nodes[v]["labels"]:
-            GP.add_node((u, v))
-            GP.nodes[(u, v)].update({"labels": G1.nodes[u]["labels"]})
+#def direct_product(G1, G2):
+#    GP = nx.Graph()
+#    # add nodes
+#    for u, v in product(G1, G2):
+#       if G1.nodes[u]["labels"] == G2.nodes[v]["labels"]:
+#           GP.add_node((u, v))
+#            GP.nodes[(u, v)].update({"labels": G1.nodes[u]["labels"]})
 
     # add edges
-    for u, v in product(GP, GP):
-            if (u[0], v[0]) in G1.edges and (u[1], v[1]) in G2.edges and G1.edges[u[0],v[0]]["labels"] == G2.edges[u[1],v[1]]["labels"]:
-                GP.add_edge((u[0], u[1]), (v[0], v[1]))
-                GP.edges[(u[0], u[1]), (v[0], v[1])].update({"labels":G1.edges[u[0], v[0]]["labels"]})
+#    for u, v in product(GP, GP):
+#            if (u[0], v[0]) in G1.edges and (u[1], v[1]) in G2.edges and G1.edges[u[0],v[0]]["labels"] == G2.edges[u[1],v[1]]["labels"]:
+#                GP.add_edge((u[0], u[1]), (v[0], v[1]))
+#                GP.edges[(u[0], u[1]), (v[0], v[1])].update({"labels":G1.edges[u[0], v[0]]["labels"]})
 
-    return GP
+ #   return GP
+
+#n-th order kernel without using product graph
+def kernel_nthorder(G1,G2,edge,n=5):
+    A1 = weight_matrix(G1,edge)
+    A2 = weight_matrix(G2,edge)
+    W = np.kron(A1.T,A2.T)
+    s = np.shape(W)[0]
+    return np.ones(s).T.dot(W**n).dot(np.ones(s))
     
 def kernel_nthorder(DPG,n):
     # G = direct_product(G1,G2)
