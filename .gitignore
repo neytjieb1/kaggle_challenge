@@ -3,6 +3,11 @@
 *.npz
 *.txt
 cyclicpattern.ipynb
+Scraps/
+exploredata.ipynb
+scraps.ipynb
 __pycache__/
 Data/
 *amanda*
+Scraps/scraps.ipynb
+Scraps/scraps.ipynb
