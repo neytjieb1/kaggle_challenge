@@ -243,3 +243,17 @@ def DPKernel(DPG):
     infsum = ss.linalg.inv( ss.eye(adjacencymatrix.shape[0], format='csc') - rho*adjacencymatrix )
     k = np.sum(np.abs(infsum))
     return k
+
+
+def calculateLogits(pred):
+    logproba = pred
+    logproba[list(np.where(logproba[:,1]==1)[0]), 1] = 1-1e-10
+    logit = np.log(logproba[:,1]/(1-logproba[:,1])) 
+    print('Range:\n', [np.min(logit), np.max(logit)])
+    return logit
+
+def saveDataToFormattedSubmissionFile(predictions, filnename):
+    Yte = {'Predicted' : predictions} 
+    dataframe = pd.DataFrame(Yte) 
+    dataframe.index += 1 
+    dataframe.to_csv(filnename, index_label='Id')
