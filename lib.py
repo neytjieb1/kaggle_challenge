@@ -49,9 +49,44 @@ def getnodelblarr(GF):
     Nlbl_arra0 = Nlbl_arra0[Nlbl_arra0[:,2].argsort()]
     return Nlbl_arra0
 
-def hashtodic(ALPHAbet, newlblarr, currentmax):
+def getedgelabelarr(GF):
+    '''For a specific graph, generate a (sorted) dataframe of old labels and new glued labels for each node'''
+    #Dictionary of labels for graph
+    ELbl_dict = nx.get_edge_attributes(GF, 'labels')
+    #Generate new lbls for each edge
+    newlabels = []
+    for e, lbl in ELbl_dict.items():
+        sortedlbls = list(e) #2-piece list is obviously sorted
+        gluedlbl = str(lbl[0])+str(sortedlbls[0]) + str(sortedlbls[1])# GlueLabels(NLbl_dict, v, sortedlbls)
+        newlabels.append(gluedlbl)
+
+    #Array with columns: node, label, newlabel
+    if len(newlabels)==0:
+        return []
+    Elbl_arra0 = np.c_[dictToArray(ELbl_dict), newlabels]
+    #And sort
+    Elbl_arra0 = Elbl_arra0[Elbl_arra0[:,2].argsort()]
+    return Elbl_arra0
+
+# def hashtodic(ALPHAbet, newlblarr, currentmax):
+#     '''Function to hash newly glued labels; then add the (unique) new ones to the overall alphabet.
+#     Return a Dataframe with new, old, hashed labels for each node'''
+#     #Get unique entries
+#     a = np.unique(newlblarr[:,2]) 
+#     #Get those that are new also
+#     a = [a[i] for i in range(len(a)) if a[i] not in ALPHAbet]
+#     #Hash values
+#     b = np.arange(len(a))+currentmax
+#     currentmax = currentmax+len(b)
+#     dic1 = ALPHAbet | {a[i] : b[i] for i in range(len(a))}
+#     #relabel
+#     newlblarr = np.c_[newlblarr, [dic1[newlblarr[:,2][_]] for _ in range(len(newlblarr))]]    
+#     return dic1, pd.DataFrame(newlblarr, columns=["node", 'oldlbl', 'hashed', 'newlbl']), currentmax
+
+def hashtodic(ALPHAbet, newlblarr, currentmax, node):
     '''Function to hash newly glued labels; then add the (unique) new ones to the overall alphabet.
-    Return a Dataframe with new, old, hashed labels for each node'''
+    Return a Dataframe with new, old, hashed labels for each node.
+    node: boolean flag indicating whether we're currently adjusting edges or leaves.'''
     #Get unique entries
     a = np.unique(newlblarr[:,2]) 
     #Get those that are new also
@@ -62,16 +97,24 @@ def hashtodic(ALPHAbet, newlblarr, currentmax):
     dic1 = ALPHAbet | {a[i] : b[i] for i in range(len(a))}
     #relabel
     newlblarr = np.c_[newlblarr, [dic1[newlblarr[:,2][_]] for _ in range(len(newlblarr))]]    
-    
-    return dic1, pd.DataFrame(newlblarr, columns=["node", 'oldlbl', 'hashed', 'newlbl']), currentmax
+    columns = ["node", 'oldlbl', 'hashed', 'newlbl'] if node else ["edge", 'oldlbl', 'hashed', 'newlbl']
+    return dic1, pd.DataFrame(newlblarr, columns=columns), currentmax
+
  
-def assignewlabels(GF, nlblarr):
+def assignewlabels_node(GF, nlblarr):
     '''Helper function: change a graph's labels. (Change directly as working on a copy) '''
     newdict = {nlblarr['node'][i] : [nlblarr['newlbl'][i]] for i in range(len(nlblarr))}
     H = GF.copy()
     nx.set_node_attributes(H, newdict, name='labels')
     return H
 
+
+def assignewlabels_edge(GF, nlblarr):
+    '''Helper function: change a graph's edge labels. (Change directly as working on a copy) '''
+    newdict = {nlblarr['edge'][i] : [nlblarr['newlbl'][i]] for i in range(len(nlblarr))}
+    H = GF.copy()
+    nx.set_edge_attributes(H, newdict, name='labels')
+    return H
 
 def save_sparse_csr(filename, array):
     np.savez(filename, data=array.data, indices=array.indices,
