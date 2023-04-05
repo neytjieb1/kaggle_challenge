@@ -66,3 +66,4 @@ class LogisticRegression:
         prob2 = sigmoid(-k.dot(alpha))
         return  np.array([prob1,prob2])
         
+
