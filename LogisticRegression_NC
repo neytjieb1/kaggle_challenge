@@ -1,66 +1,68 @@
 import numpy as np
-import numpy.linalg as np.linalg
+import numpy.linalg
 
 class LogisticRegression:
     
-    def __init__(self,X,y,theta,delta,niter):
-        self.X = X
+    def __init__(self,K,y,alpha,lamb,delta,niter):
+        self.K = K
         self.y = y
-        self.theta = theta
+        self.alpha = alpha
+        self.lamb = lamb
         self.delta = delta
         self.iter = niter
        
     
-    def fit(self, X, y):
+    def fit(self, K, y):
+        
+        def sigmoid(u):                                                        
+            return 1 / (1 + np.exp(-u))
     
-        def sigmoid(x, theta):                                                        
-            z = (theta[0]*x + theta[1]).astype("float_")                                              
-            return 1.0 / (1.0 + np.exp(-z))
+        def log_loss(u):                                                                                                      
+            return np.log(1 + np.exp(-u))
         
-        def log_likelihood(x, y, theta):                                                                
-            sigmoid_probs = sigmoid(x, theta)                                        
-            return np.sum(y * np.log(sigmoid_probs) + (1 - y) * np.log(1 - sigmoid_probs))
+        def diff_log_loss(u):
+            return -sigmoid(-u)
         
-        def gradient(x, y, theta):                                                         
-            sigmoid_probs = sigmoid(x, theta)                                        
-            return np.array([[np.sum((y - sigmoid_probs) * x),np.sum((y - sigmoid_probs))]])                         
+        def sec_log_loss(u):
+            return sigmoid(u)*sigmoid(-u)
+        
+        def log_likelihood(k, y, alpha,lamb):                                                                                                       
+            return np.sum(log_loss(y*(k.dot(alpha))))/n + 0.5*lamb*alpha.T.dot(k).dot(alpha)
+        
+        def gradient(k, y, alpha,lamb):
+            P = diff_log_loss(y*(k.dot(alpha)))
+            return k.dot(np.diag(P)).dot(y) + lamb*k.dot(alpha)                        
 
-        def hessian(x, y, theta):                                                          
-            sigmoid_probs = sigmoid(x, theta)                                        
-            d1 = np.sum((sigmoid_probs * (1 - sigmoid_probs)) * x**2)                  
-            d2 = np.sum((sigmoid_probs * (1 - sigmoid_probs)) * x)                  
-            d3 = np.sum((sigmoid_probs * (1 - sigmoid_probs)))                  
-            H = np.array([[d1, d2],[d2, d3]])                                           
-            return H
+        def hessian(k, y, alpha,lamb):                                                          
+            W = sec_log_loss(y*(k.dot(alpha)))                             
+            return k.dot(np.diag(W)).dot(k) + lamb*k
         
-        # Initialize log_likelihood & parameters                                                                                                                                    
+                                                                                                                                   
         Delta = np.Infinity                                                                
-        l = log_likelihood(self.X, self.y, self.theta)                                                                 
-        # Convergence Conditions                                                                                                                                                                                    
+        l = log_likelihood(self.K, self.y, self.alpha,self.lamb)                                                                 
+                                                                                                                                                                                    
         i = 0                                                                           
         while abs(Delta) > self.delta and i < self.iter:                                       
             i += 1                                                                      
-            g = gradient(self.X, self.y, self.theta)                                                      
-            hess = hessian(self.X, self.y, self.theta)                                                 
-            H_inv = np.linalg.inv(hess)                                                 
+            g = gradient(self.K, self.y, self.alpha,self.lamb)                                                      
+            hess = hessian(self.K, self.y, self.alpha,self.lamb)                                                 
+            H_inv = numpy.linalg.inv(hess)                                                 
             
-            diff = np.dot(H_inv, g.T) 
-            diff_theta = np.array([diff[0][0],diff[1][0]])
+            diff_alpha = np.dot(H_inv, g.T) 
 
-            # Perform our update step 
-            self.theta = self.theta + diff_theta                                                               
-
-            # Update the log-likelihood at each iteration                                     
-            l_new = log_likelihood(self.X, self.y, self.theta)                                                      
+            self.alpha = self.alpha + diff_alpha                                                               
+                                    
+            l_new = log_likelihood(self.K, self.y, self.alpha,self.lamb)                                                      
             Delta = l - l_new                                                           
             l = l_new                                                                
         
 
-    def predictproba(self,x):
-        def sigmoid(x, theta):                                                        
-            z = (theta[0]*x + theta[1]).astype("float_")                                              
-            return 1.0 / (1.0 + np.exp(-z))
-        sigmoid_probs = sigmoid(x,self.theta)
-        return  np.array([sigmoid_probs,1 - sigmoid_probs])
-    
-    
+    def predictproba(self,k):
+        
+        def sigmoid(u):                                                        
+            return 1 / (1 + np.exp(-u))
+        
+        prob1 = sigmoid(k.dot(alpha))
+        prob2 = sigmoid(-k.dot(alpha))
+        return  np.array([prob1,prob2])
+        
