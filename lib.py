@@ -301,7 +301,7 @@ def saveDataToFormattedSubmissionFile(predictions, filnename):
     dataframe.index += 1 
     dataframe.to_csv(filnename, index_label='Id')
 
-
+from scipy import optimize
 class KernelSVC:
     
     def __init__(self, C, kernel, epsilon = 1e-3):
@@ -381,3 +381,19 @@ class KernelSVC:
         """ Predict y values in {-1, 1} """
         d = self.separating_function(X)
         return 2 * (d+self.b> 0) - 1
+    
+
+from sklearn.metrics.pairwise import euclidean_distances
+class RBF:    
+    def __init__(self, sigma=1.):
+        self.sigma = sigma  ## the variance of the kernel
+    def kernel(self,X,Y):
+        XX = np.exp(-euclidean_distances(X,Y, squared=True)/(2*self.sigma**2))
+        return XX
+    
+class LIN:
+    def kernel(self, X, Y):
+        def evaluate(a, b):
+             return np.dot(a,b)
+        XX = np.apply_along_axis(lambda x1 : np.apply_along_axis(lambda x2:  evaluate(x1, x2), 1, Y), 1, X)    
+        return XX
