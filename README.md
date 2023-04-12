@@ -5,7 +5,7 @@ in `LogisticRegression_NC.py`, as well as the SVM classifier in `???.py`.
 We also provide implementations for the following kernels:
 - Hadamard Code
 - Random Walk
-- $n^th$-order 
+- $n^{th}$-order 
 - Laplacian
 
 ## To run our code
