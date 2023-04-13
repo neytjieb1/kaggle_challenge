@@ -300,3 +300,100 @@ def saveDataToFormattedSubmissionFile(predictions, filnename):
     dataframe = pd.DataFrame(Yte) 
     dataframe.index += 1 
     dataframe.to_csv(filnename, index_label='Id')
+
+from scipy import optimize
+class KernelSVC:
+    
+    def __init__(self, C, kernel, epsilon = 1e-3):
+        self.type = 'non-linear'
+        self.C = C                               
+        self.kernel = kernel     
+        self.alpha = None
+        self.support = None
+        self.epsilon = epsilon
+        self.norm_f = None
+       
+    
+    def fit(self, X, y):
+       #### You might define here any variable needed for the rest of the code
+        self.N = len(y)
+        K = self.kernel(X,X) 
+        G = K * np.dot(y.reshape(-1, 1), y.reshape(1,-1))        
+        
+
+        # Lagrange dual loss
+        def loss(alpha):
+            return np.sum(alpha) - 0.5*alpha.dot(alpha.dot(G))
+
+        # '''----------------partial derivative of the dual loss wrt alpha -----------------'''
+        def grad_loss(alpha):
+            return np.ones_like(alpha) - alpha.dot(G)
+            
+
+        # Constraints on alpha of the shape :
+        # -  d - C*alpha  = 0
+        # -  b - A*alpha >= 0
+        A0 = -np.eye(self.N)
+        b0 = np.zeros(self.N)
+        bC = self.C * np.ones(self.N)
+        AC = np.eye(self.N)
+
+        fun_eq = lambda alpha: alpha.dot(y) # '''----------------function for equality constraint------------------'''        
+        jac_eq = lambda alpha: y   #'''----------------jac_wrt_alpha for equality constraint------------------'''
+        fun_ineq0 = lambda alpha: b0 - A0.dot(alpha)  # '''---------------function for inequality constraint-------------------'''     
+        jac_ineq0 = lambda alpha: -A0 # '''---------------jac_wrt_alpha of inequality constraint-------------------'''
+        fun_ineqC = lambda alpha: bC - AC.dot(alpha)  # '''---------------function for inequality constraint-------------------'''     
+        jac_ineqC = lambda alpha: -AC # '''---------------jac_wrt_alpha of inequality constraint-------------------'''
+        
+        constraints = ({'type': 'eq',  'fun': fun_eq, 'jac': jac_eq},
+                       {'type': 'ineq', 'fun': fun_ineq0 , 'jac': jac_ineq0}, 
+                       {'type': 'ineq', 'fun': fun_ineqC , 'jac': jac_ineqC})
+
+        # Maximize by minimizing the opposite (I added this in)
+        optRes = optimize.minimize(fun=lambda alpha: -loss(alpha),
+                                   x0=np.ones(self.N), 
+                                   method='SLSQP', 
+                                   jac=lambda alpha: -grad_loss(alpha), 
+                                   constraints=constraints)
+
+        # Results
+        self.alpha = optRes.x
+        
+        self.index = self.alpha > self.epsilon
+        newG = G[self.index][:,self.index]
+        self.support = X[self.index]
+        self.margin_points =  y[self.index] * self.alpha[self.index] #------------------- A matrix with each row corresponding to a point that falls on the margin ------------------''
+        
+        self.b = np.mean(y[self.index] - self.alpha[self.index].dot(newG)) #''' -----------------offset of the classifier------------------ '''
+        
+        self.norm_f = self.alpha[self.index].dot(self.alpha[self.index].dot(newG))
+
+
+    # Input : matrix x of shape N data points times d dimension
+    # Output: vector of size N
+    def separating_function(self,X):
+        K = self.kernel(X, self.support)
+        d = np.multiply(self.margin_points, K)
+        d = np.sum( d, 1)
+        return d
+
+    def predict(self, X):
+        """ Predict y values in {-1, 1} """
+        d = self.separating_function(X)
+        return 2 * (d+self.b> 0) - 1
+    
+
+from sklearn.metrics.pairwise import euclidean_distances
+class RBF:    
+    def __init__(self, sigma=1.):
+        self.sigma = sigma  ## the variance of the kernel
+    def kernel(self,X,Y):
+        XX = np.exp(-euclidean_distances(X,Y, squared=True)/(2*self.sigma**2))
+        return XX
+    
+class LIN:
+    def kernel(self, X, Y):
+        def evaluate(a, b):
+             return np.dot(a,b)
+        XX = np.apply_along_axis(lambda x1 : np.apply_along_axis(lambda x2:  evaluate(x1, x2), 1, Y), 1, X)    
+        return XX
