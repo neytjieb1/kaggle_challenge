@@ -4,6 +4,21 @@ import networkx as nx
 from itertools import chain
 from scipy import sparse
 import math
+from tqdm import tqdm
+
+def translateGraphs(GRAPHS):
+    '''Very specific helper function to translate labels 0-3 from edge labels to 50-53 range.'''
+    graphs = []
+    traduction={0: 50, 1: 51, 2:52, 3:53}
+    for i in tqdm(range(len(GRAPHS))):
+        H = GRAPHS[i].copy()
+        oldlbls = nx.get_edge_attributes(H, 'labels')
+        newlbls = {e: [traduction[l[0]]] for e, l in oldlbls.items()}
+        #set edge labels
+        nx.set_edge_attributes(H, newlbls, name='labels')
+        #overwrite
+        graphs.append(H)
+    return graphs 
 
 def SortLabels(GF, nodeindex, labeldict):
     '''Get all neighbours of a node at nodeindex and sort them'''
@@ -68,21 +83,6 @@ def getedgelabelarr(GF):
     Elbl_arra0 = Elbl_arra0[Elbl_arra0[:,2].argsort()]
     return Elbl_arra0
 
-# def hashtodic(ALPHAbet, newlblarr, currentmax):
-#     '''Function to hash newly glued labels; then add the (unique) new ones to the overall alphabet.
-#     Return a Dataframe with new, old, hashed labels for each node'''
-#     #Get unique entries
-#     a = np.unique(newlblarr[:,2]) 
-#     #Get those that are new also
-#     a = [a[i] for i in range(len(a)) if a[i] not in ALPHAbet]
-#     #Hash values
-#     b = np.arange(len(a))+currentmax
-#     currentmax = currentmax+len(b)
-#     dic1 = ALPHAbet | {a[i] : b[i] for i in range(len(a))}
-#     #relabel
-#     newlblarr = np.c_[newlblarr, [dic1[newlblarr[:,2][_]] for _ in range(len(newlblarr))]]    
-#     return dic1, pd.DataFrame(newlblarr, columns=["node", 'oldlbl', 'hashed', 'newlbl']), currentmax
-
 def hashtodic(ALPHAbet, newlblarr, currentmax, node):
     '''Function to hash newly glued labels; then add the (unique) new ones to the overall alphabet.
     Return a Dataframe with new, old, hashed labels for each node.
@@ -100,14 +100,12 @@ def hashtodic(ALPHAbet, newlblarr, currentmax, node):
     columns = ["node", 'oldlbl', 'hashed', 'newlbl'] if node else ["edge", 'oldlbl', 'hashed', 'newlbl']
     return dic1, pd.DataFrame(newlblarr, columns=columns), currentmax
 
- 
 def assignewlabels_node(GF, nlblarr):
     '''Helper function: change a graph's labels. (Change directly as working on a copy) '''
     newdict = {nlblarr['node'][i] : [nlblarr['newlbl'][i]] for i in range(len(nlblarr))}
     H = GF.copy()
     nx.set_node_attributes(H, newdict, name='labels')
     return H
-
 
 def assignewlabels_edge(GF, nlblarr):
     '''Helper function: change a graph's edge labels. (Change directly as working on a copy) '''
@@ -117,13 +115,56 @@ def assignewlabels_edge(GF, nlblarr):
     return H
 
 def save_sparse_csr(filename, array):
+    '''Save a csr array to a specified file location'''
     np.savez(filename, data=array.data, indices=array.indices,
              indptr=array.indptr, shape=array.shape)
 
 def load_sparse_csr(filename):
+    '''Load a csr array from a specified file location'''
     loader = np.load(filename)
     return sparse.csr_matrix((loader['data'], loader['indices'], loader['indptr']),
                       shape=loader['shape'])
+
+def generateFeatureVectorsfromAlphabet(hashedgraphs, Alphabet, l):
+    '''Creating matrix of feature vectors for each graph'''
+    M = np.zeros((len(hashedgraphs), len(Alphabet)+100))
+    for i in tqdm(range(len(hashedgraphs))):
+        a = pd.value_counts(l[i])
+        M[i, list(a.index)] = a.values
+
+    sM = sparse.csr_matrix(M)
+    #And save so this only needs to be saved once.
+    return sM
+
+def my_train_test_split(X, Y, test_size, random_state=-1):
+    '''function emulating the canonical sklearn function of the same name'''
+    if random_state==-1: random_state = np.random.randint(10000)
+    N = len(X)
+    np.random.seed(random_state)
+    index = np.random.choice(np.arange(N), int(N*test_size))
+    index = np.array([i in index for i in np.arange(N)])
+    X_train = X[~index]
+    X_valid = X[index]
+    Y_train = Y[~index]
+    Y_valid = Y[index]
+    return X_train, X_valid, Y_train, Y_valid
+
+def calculateLogits(pred):
+    '''Calculate logits from predicted probabilities'''
+    logproba = pred
+    #to avoid infinity: 
+    logproba[list(np.where(logproba[:,1]==1)[0]), 1] = 1-1e-9
+    logit = np.log(logproba[:,1]/(1-logproba[:,1])) 
+    print('Logit range:\n', [np.min(logit), np.max(logit)])
+    return logit
+
+def saveDataToFormattedSubmissionFile(predictions, filnename):
+    '''Formats predicted logits to kaggle-ready format and saves file to .csv'''
+    Yte = {'Predicted' : predictions} 
+    dataframe = pd.DataFrame(Yte) 
+    dataframe.index += 1 
+    dataframe.to_csv(filnename, index_label='Id')
+
 
 
 #generate the Hadamard Matrix
@@ -178,6 +219,19 @@ def hadamard_label(G,h):
             l[i,:] = l[i,:] + np.sum(np.array([l[j,:] for j in list(G.neighbors(i))]))
     return(l)
 
+# count the number of distinct labels in a graph
+def count(arr):
+   vis = []
+   count = 0
+   for i in range(len(arr)):
+       ind = 0
+       for j in range(len(vis)):
+           if arr[i] == vis[j]:
+               ind += 1
+       if ind == 0:
+           count += 1
+           vis.append(arr[i])
+   return np.sort(vis),count
 
 def hadamard_kernel(G1,G2,hmax):
     dist = []
@@ -246,7 +300,7 @@ def kernel_randomwalk(G1,G2,edge,prob1=np.repeat(.5,2),prob2=np.repeat(.5,2),c=0
     
     return q.T.dot(V).dot(p)
 
-from itertools import product
+# from itertools import product
 #def direct_product(G1, G2):
 #    GP = nx.Graph()
 #    # add nodes
@@ -255,13 +309,13 @@ from itertools import product
 #           GP.add_node((u, v))
 #            GP.nodes[(u, v)].update({"labels": G1.nodes[u]["labels"]})
 
-    # add edges
+#     add edges
 #    for u, v in product(GP, GP):
 #            if (u[0], v[0]) in G1.edges and (u[1], v[1]) in G2.edges and G1.edges[u[0],v[0]]["labels"] == G2.edges[u[1],v[1]]["labels"]:
 #                GP.add_edge((u[0], u[1]), (v[0], v[1]))
 #                GP.edges[(u[0], u[1]), (v[0], v[1])].update({"labels":G1.edges[u[0], v[0]]["labels"]})
 
- #   return GP
+#    return GP
 
 #n-th order kernel without using product graph
 def kernel_nthorder(G1,G2,edge,n=5):
@@ -273,7 +327,7 @@ def kernel_nthorder(G1,G2,edge,n=5):
     
 def kernel_nthorder(DPG,n):
     # G = direct_product(G1,G2)
-    A = adjacency_matrix(DPG)
+    A = nx.adjacency_matrix(DPG)
     s = np.shape(A)[0]
     return np.ones(s).T.dot(A**n).dot(np.ones(s))
 
@@ -287,25 +341,10 @@ def DPKernel(DPG):
     k = np.sum(np.abs(infsum))
     return k
 
-
-def calculateLogits(pred):
-    logproba = pred
-    logproba[list(np.where(logproba[:,1]==1)[0]), 1] = 1-1e-10
-    logit = np.log(logproba[:,1]/(1-logproba[:,1])) 
-    print('Range:\n', [np.min(logit), np.max(logit)])
-    return logit
-
-def saveDataToFormattedSubmissionFile(predictions, filnename):
-    Yte = {'Predicted' : predictions} 
-    dataframe = pd.DataFrame(Yte) 
-    dataframe.index += 1 
-    dataframe.to_csv(filnename, index_label='Id')
-
 from scipy import optimize
 class KernelSVC:
-    
-    def __init__(self, C, kernel, epsilon = 1e-3):
-        self.type = 'non-linear'
+    def __init__(self, C, kernel, type, epsilon = 1e-3):
+        self.type = type#'non-linear'
         self.C = C                               
         self.kernel = kernel     
         self.alpha = None
@@ -382,7 +421,6 @@ class KernelSVC:
         d = self.separating_function(X)
         return 2 * (d+self.b> 0) - 1
     
-
 from sklearn.metrics.pairwise import euclidean_distances
 class RBF:    
     def __init__(self, sigma=1.):

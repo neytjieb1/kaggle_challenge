@@ -1,12 +1,6 @@
 # Classifying Biological Graph Data using Kernel Methods.
 
-The final data may be found in `wflehman.ipynb` with precomputed kernel matrices in the `Data/` folder and the implementation of the logistic regression classifier 
-in `LogisticRegression_NC.py`, as well as the SVM classifier in `???.py`.
-We also provide implementations for the following kernels:
-- Hadamard Code
-- Random Walk
-- $n^{th}$-order 
-- Laplacian
+The final data may be found in `wflehman.ipynb` with precomputed kernel matrices in the `Data/` folder and the implementation of the logistic regression classifier in `LogisticRegression_NC.py`, as well as the SVM classifier in `Lib.py`. The `Kernel Implementations` folder contains implementations also for Hadamard Kernel, Direct Product, Random Walk, $n^{th}$-order and Cyclic Pattern (though this was eventually not used)
 
 ## To run our code
 1. In the `Data/` folder, add train and test files in `.pkl` format.

@@ -2,14 +2,24 @@
 *.pkl
 *.npz
 *.txt
-cyclicpattern.ipynb
-Scraps/*
-Scraps/exploredata.ipynb
-scraps.ipynb
 __pycache__/*
+
+Scraps/*
+!Scraps/exploredata.ipynb
+!Scraps/pseudocode.txt
+
+cyclicpattern.ipynb
+
 Data/*
-*amanda*
-!Data/WL_allfeatures_e.npz
-!Data/WL_allfeatures.npz
-!Data/WLfeaturevectors.npz
-!Data/WLKernel.npx
+# !Kc8000.txt
+# !Kc8000_pcaed.txt
+!Data/K_nth5.txt
+!Data/nthorder2000_5_train.txt
+
+Data/WL/*
+!Data/WL/WL_allfeatures_e_h8.npz
+!Data/WL/WL_allfeatures.npz
+!Data/WL/WLfeaturevectors.npz
+!Data/WL/WLKernel.npz
+
+!Data/Predictions/
