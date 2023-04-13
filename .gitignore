@@ -4,15 +4,12 @@
 *.txt
 cyclicpattern.ipynb
 Scraps/*
-exploredata.ipynb
+Scraps/exploredata.ipynb
 scraps.ipynb
 __pycache__/*
 Data/*
 *amanda*
-Scraps/scraps.ipynb
-Scraps/scraps.ipynb
 !Data/WL_allfeatures_e.npz
 !Data/WL_allfeatures.npz
 !Data/WLfeaturevectors.npz
 !Data/WLKernel.npx
-Scraps/scraps.ipynb
