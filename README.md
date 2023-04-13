@@ -5,6 +5,7 @@ The final data may be found in `wflehman.ipynb` with precomputed kernel matrices
 ## To run our code
 1. In the `Data/` folder, add train and test files in `.pkl` format.
 2. Run `wflehman.ipynb`
+3. Pre-computed kernel matrices for the WL kernel may be found [here](https://drive.google.com/file/d/107rM6ltHMsx9pFt4Z-tjEK0c-7GTDKP9/view?usp=share_link).
 
 ## Preprocessing
 1. To ensure a unique label alphabet from the get-go, we first relabel the edge labels to $\{50, \dots, 53\}$. (The graphs provided have node labels ranging from values $\{0,\dots, 49\}$ and edge labels from $\{0,\dots, 3\}$)
